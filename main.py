@@ -242,6 +242,23 @@ async def status() -> dict:
     return {"ffmpeg": shutil.which("ffmpeg") is not None}
 
 
+@app.get("/api/fun-fact")
+async def fun_fact() -> dict:
+    import urllib.request
+    def _fetch() -> dict:
+        try:
+            req = urllib.request.Request(
+                "https://useless-facts.sameerkumar.website/api",
+                headers={"User-Agent": "yt-downloader/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return json.loads(resp.read())
+        except Exception:
+            return {}
+    data = await asyncio.to_thread(_fetch)
+    return {"fact": data.get("data", "")}
+
+
 @app.post("/api/info")
 async def get_info(req: InfoRequest) -> dict:
     url = req.url.strip()

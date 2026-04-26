@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YT Downloader</title>
+<title>YT Downloadifier</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -322,6 +322,17 @@ select.qs:focus { border-color: var(--accent); }
   transition: background 0.15s, color 0.15s;
 }
 .btn-cancel:hover { background: var(--surface2); color: var(--text); }
+
+.prog-quip {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 1rem;
+  min-height: 1.1rem;
+  transition: opacity 0.35s;
+}
+.prog-quip.fade { opacity: 0; }
 </style>
 </head>
 <body>
@@ -357,6 +368,7 @@ select.qs:focus { border-color: var(--accent); }
       <span id="prog-speed-eta"></span>
     </div>
     <button class="btn-cancel" onclick="cancelDownload()">Cancel</button>
+    <div class="prog-quip" id="prog-quip"></div>
   </div>
 </div>
 
@@ -367,6 +379,7 @@ select.qs:focus { border-color: var(--accent); }
 let currentJobId         = null;
 let sseSource            = null;
 let currentPlaylistTitle = 'playlist';
+let quipTimer            = null;
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const urlInput  = document.getElementById('url');
@@ -613,6 +626,38 @@ function watchJob(jobId) {
   sseSource.onerror = () => { sseSource?.close(); sseSource = null; };
 }
 
+// ── Useless facts quips ────────────────────────────────────────────────────
+async function fetchFact() {
+  try {
+    const r = await fetch('/api/fun-fact');
+    const d = await r.json();
+    return d.fact || '';
+  } catch { return ''; }
+}
+
+async function startQuips() {
+  const el = document.getElementById('prog-quip');
+  if (!el) return;
+
+  async function showNext() {
+    const fact = await fetchFact();
+    if (!fact) return;
+    el.classList.add('fade');
+    await new Promise(r => setTimeout(r, 350));
+    el.textContent = fact;
+    el.classList.remove('fade');
+  }
+
+  await showNext();
+  quipTimer = setInterval(showNext, 6000);
+}
+
+function stopQuips() {
+  if (quipTimer) { clearInterval(quipTimer); quipTimer = null; }
+  const el = document.getElementById('prog-quip');
+  if (el) { el.classList.add('fade'); el.textContent = ''; }
+}
+
 // ── Overlay helpers ────────────────────────────────────────────────────────
 function showOverlay(title, sub) {
   document.getElementById('prog-title').textContent    = title;
@@ -621,9 +666,11 @@ function showOverlay(title, sub) {
   document.getElementById('prog-pct').textContent      = '0%';
   document.getElementById('prog-speed-eta').textContent = '';
   document.getElementById('overlay').classList.add('show');
+  startQuips();
 }
 
 function hideOverlay() {
+  stopQuips();
   document.getElementById('overlay').classList.remove('show');
   currentJobId = null;
 }
