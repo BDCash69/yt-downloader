@@ -1,0 +1,12 @@
+[project]
+name = "yt-downloader"
+version = "0.1.0"
+description = "YouTube video/playlist downloader with web interface"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "yt-dlp>=2024.1.0",
+    "python-multipart>=0.0.9",
+]
