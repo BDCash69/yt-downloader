@@ -41,8 +41,14 @@ def _extra_ydl_opts() -> dict:
     if COOKIES_FROM_BROWSER:
         browser, _, profile = COOKIES_FROM_BROWSER.partition(":")
         opts["cookiesfrombrowser"] = (browser.strip(), profile.strip() or None, None, None)
-    elif COOKIES_FILE:
-        opts["cookiefile"] = COOKIES_FILE
+    elif COOKIES_FILE and os.path.exists(COOKIES_FILE):
+        # yt-dlp writes back to cookiefile after use, and has been seen dropping
+        # auth cookies on save. Copy to a disposable temp file so the master export
+        # (which requires a manual browser re-export to replace) is never mutated.
+        fd, tmp_path = tempfile.mkstemp(prefix="ytdl_cookies_", suffix=".txt")
+        os.close(fd)
+        shutil.copy2(COOKIES_FILE, tmp_path)
+        opts["cookiefile"] = tmp_path
     return opts
 
 # ── Job registry ──────────────────────────────────────────────────────────────
