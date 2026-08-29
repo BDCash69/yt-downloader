@@ -34,13 +34,16 @@ COOKIES_FROM_BROWSER = os.environ.get("YTDLP_COOKIES_FROM_BROWSER", "").strip()
 COOKIES_FILE = os.environ.get("YTDLP_COOKIES_FILE", "").strip()
 
 
-def _cookie_opts() -> dict:
+def _extra_ydl_opts() -> dict:
+    # ejs:github lets yt-dlp fetch its signature/n-challenge solver scripts,
+    # required since YouTube's 2026 anti-bot hardening broke extraction without it.
+    opts: dict = {"remote_components": ["ejs:github"]}
     if COOKIES_FROM_BROWSER:
         browser, _, profile = COOKIES_FROM_BROWSER.partition(":")
-        return {"cookiesfrombrowser": (browser.strip(), profile.strip() or None, None, None)}
-    if COOKIES_FILE:
-        return {"cookiefile": COOKIES_FILE}
-    return {}
+        opts["cookiesfrombrowser"] = (browser.strip(), profile.strip() or None, None, None)
+    elif COOKIES_FILE:
+        opts["cookiefile"] = COOKIES_FILE
+    return opts
 
 # ── Job registry ──────────────────────────────────────────────────────────────
 
@@ -122,7 +125,7 @@ def _ydl_opts(jid: str, out_template: str, quality: str) -> dict:
         "progress_hooks": [_progress_hook(jid)],
         "quiet": True,
         "no_warnings": True,
-        **_cookie_opts(),
+        **_extra_ydl_opts(),
     }
     if is_audio:
         opts["format"] = "bestaudio/best"
@@ -177,7 +180,7 @@ def _worker_playlist(jid: str, url: str, quality: str, entries: list[dict] | Non
 
     try:
         if entries is None:
-            with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True, "no_warnings": True, **_cookie_opts()}) as ydl:
+            with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True, "no_warnings": True, **_extra_ydl_opts()}) as ydl:
                 playlist_info = ydl.extract_info(url, download=False)
             raw = list(playlist_info.get("entries") or [])
             playlist_title = playlist_info.get("title", "playlist")
@@ -281,7 +284,7 @@ async def get_info(req: InfoRequest) -> dict:
         raise HTTPException(400, "URL required")
 
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "extract_flat": "in_playlist", **_cookie_opts()}) as ydl:
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "extract_flat": "in_playlist", **_extra_ydl_opts()}) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as exc:
         raise HTTPException(400, str(exc))
