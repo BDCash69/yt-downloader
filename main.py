@@ -47,7 +47,9 @@ def _extra_ydl_opts() -> dict:
         # (which requires a manual browser re-export to replace) is never mutated.
         fd, tmp_path = tempfile.mkstemp(prefix="ytdl_cookies_", suffix=".txt")
         os.close(fd)
-        shutil.copy2(COOKIES_FILE, tmp_path)
+        # copyfile (not copy2) so the source's permissions aren't copied onto
+        # the temp file — it needs to stay writable even if the master is read-only.
+        shutil.copyfile(COOKIES_FILE, tmp_path)
         opts["cookiefile"] = tmp_path
     return opts
 
